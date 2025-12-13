@@ -1,0 +1,117 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// User model for authentication
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  role      String   @default("user") // user, admin, instructor
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  liveSessions     LiveSession[]
+  recordedSessions RecordedSession[]
+  activeSession    ActiveUserSession?
+}
+
+// Active User Session - tracks which user is in which live session
+model ActiveUserSession {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId     String
+  joinedAt      DateTime @default(now())
+  lastHeartbeat DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([lastHeartbeat])
+}
+
+// Live Session model
+model LiveSession {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  date        DateTime
+  time        String
+  duration    String
+  status      String   @default("upcoming") // upcoming, live, completed, cancelled
+  attendees   Int      @default(0)
+  maxAttendees Int?
+  meetingLink String?
+  createdBy   String
+  creator     User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+  @@index([status])
+  @@index([createdBy])
+}
+
+// Recorded Session model
+model RecordedSession {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  recordedDate DateTime
+  duration     String
+  views        Int      @default(0)
+  size         String
+  category     String
+  videoUrl     String
+  thumbnailUrl String?
+  downloadUrl  String?
+  createdBy    String
+  creator      User     @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([recordedDate])
+  @@index([category])
+  @@index([createdBy])
+}
+
+// Course Module model
+model CourseModule {
+  id          String   @id @default(cuid())
+  moduleNumber Int      // 0, 1, 2, 3...
+  title       String
+  description String?
+  order       Int      // For sorting
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  chapters    CourseChapter[]
+
+  @@unique([moduleNumber])
+  @@index([order])
+}
+
+// Course Chapter model (video for each chapter)
+model CourseChapter {
+  id          String   @id @default(cuid())
+  moduleId    String
+  module      CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  videoUrl    String
+  duration    String?
+  order       Int      // For sorting within module
+  views       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([moduleId])
+  @@index([order])
+}
